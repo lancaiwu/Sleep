@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Sleep</string>
+    <string name="end_text">结束时间 :  </string>
+    <string name="start_text">开始时间 :  </string>
+</resources>
