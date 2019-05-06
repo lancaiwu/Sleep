@@ -1,9 +1,12 @@
 package com.lancaiwu.sleep;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,20 +14,26 @@ import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.TimePicker;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
+import com.lancaiwu.sleep.bean.AppBean;
 import com.lancaiwu.sleep.bean.SettingBean;
 import com.lancaiwu.sleep.bean.TimeBean;
+import com.lancaiwu.sleep.utils.AppUtils;
 import com.lancaiwu.sleep.utils.Constants;
 import com.lancaiwu.sleep.utils.IOUtils;
+import com.lancaiwu.sleep.utils.SpUtils;
 
 import java.io.File;
+import java.util.List;
 
 import static com.lancaiwu.sleep.utils.Constants.SP_NAME;
 
@@ -48,6 +57,11 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView tv_setting_state;
 
+    private TextView tv_app_name;
+
+    private Button btn_set_white_list;
+
+    private List<AppBean> appList;
 
     //读写权限
     private static String[] PERMISSIONS_STORAGE = {
@@ -102,7 +116,15 @@ public class MainActivity extends AppCompatActivity {
 
         initView();
 
+        initAppList();
+
         saveSetting();
+
+
+    }
+
+    private void initAppList() {
+        appList = AppUtils.getThirdAppList(this);
     }
 
     /**
@@ -110,22 +132,8 @@ public class MainActivity extends AppCompatActivity {
      */
     private void initData() {
         // 文件里面没有东西，读取sp里面的数据
-        settingBean = new SettingBean();
         SharedPreferences sharedPreferences = getSp();
-        settingBean.setEnable(sharedPreferences.getBoolean("isEnable", false));
-
-        TimeBean startTimeBean = new TimeBean();
-        startTimeBean.setHour(sharedPreferences.getInt("startTime_hour", 23));
-        startTimeBean.setMinute(sharedPreferences.getInt("startTime_minute", 0));
-
-        settingBean.setStartTime(startTimeBean);
-
-        TimeBean endTimeBean = new TimeBean();
-
-        endTimeBean.setHour(sharedPreferences.getInt("endTime_hour", 6));
-        endTimeBean.setMinute(sharedPreferences.getInt("endTime_minute", 0));
-        settingBean.setEndTime(endTimeBean);
-
+        settingBean = SpUtils.getSetting(sharedPreferences);
         //    initDataBean();
         saveSetting();
     }
@@ -142,6 +150,9 @@ public class MainActivity extends AppCompatActivity {
         btn_set_end_time = (Button) findViewById(R.id.btn_set_end_time);
         sb_setting = (Switch) findViewById(R.id.sb_setting);
         tv_setting_state = (TextView) findViewById(R.id.tv_setting_state);
+
+        btn_set_white_list = (Button) findViewById(R.id.btn_set_white_list);
+        tv_app_name = (TextView) findViewById(R.id.tv_app_name);
 
         if (isEnableXP()) {
             tv_xp_state.setText("已激活");
@@ -214,6 +225,52 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        btn_set_white_list.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSetWhiteList();
+            }
+        });
+
+        if (settingBean.getAppBean() != null) {
+            tv_app_name.setText(settingBean.getAppBean().getAppName());
+        } else {
+            tv_app_name.setText("暂未设置");
+        }
+
+    }
+
+    private void showSetWhiteList() {
+        String[] appNames = new String[appList.size()];
+        for (int i = 0; i < appList.size(); i++) {
+            appNames[i] = appList.get(i).getAppName();
+        }
+        AlertDialog.Builder singleChoiceDialog =
+                new AlertDialog.Builder(MainActivity.this);
+        singleChoiceDialog.setTitle("请选择一个忽略的app");
+        // 第二个参数是默认选项，此处设置为0
+        final int[] myWhich = {-1};
+        singleChoiceDialog.setSingleChoiceItems(appNames, 0,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        myWhich[0] =which;
+                    }
+                });
+        singleChoiceDialog.setPositiveButton("确定",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.e("lanc", "which: " +  myWhich[0] );
+                        if ( myWhich[0]  >= 0) {
+                            AppBean appBean = appList.get( myWhich[0] );
+                            settingBean.setAppBean(appBean);
+                            tv_app_name.setText(settingBean.getAppBean().getAppName());
+                            saveSetting();
+                        }
+                    }
+                });
+        singleChoiceDialog.show();
     }
 
     private String getTimeFormat(TimeBean timeBean) {
@@ -241,6 +298,10 @@ public class MainActivity extends AppCompatActivity {
             editor.putInt("startTime_minute", settingBean.getStartTime().getMinute());
             editor.putInt("endTime_hour", settingBean.getEndTime().getHour());
             editor.putInt("endTime_minute", settingBean.getEndTime().getMinute());
+
+            if (settingBean.getAppBean() != null) {
+                editor.putString("white_list_app", gson.toJson(settingBean.getAppBean()));
+            }
             editor.apply();
         } catch (Exception e) {
             e.printStackTrace();

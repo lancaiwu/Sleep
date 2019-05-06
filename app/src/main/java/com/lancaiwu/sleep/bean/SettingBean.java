@@ -36,4 +36,14 @@ public class SettingBean {
     public void setEnable(boolean enable) {
         isEnable = enable;
     }
+
+    private AppBean appBean;
+
+    public AppBean getAppBean() {
+        return appBean;
+    }
+
+    public void setAppBean(AppBean appBean) {
+        this.appBean = appBean;
+    }
 }

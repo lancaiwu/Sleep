@@ -1,25 +1,26 @@
 package com.lancaiwu.sleep.hook;
 
+import android.app.Application;
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.lancaiwu.sleep.bean.SettingBean;
-import com.lancaiwu.sleep.bean.TimeBean;
 import com.lancaiwu.sleep.utils.Constants;
-import com.lancaiwu.sleep.utils.MyTimer;
 import com.lancaiwu.sleep.utils.NetUtils;
+import com.lancaiwu.sleep.utils.PerUtils;
 
-import java.util.Calendar;
-import java.util.Date;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 
 
 /**
@@ -32,30 +33,39 @@ public class Hook implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-
         hookMyApp(lpparam);
-
-        hookOtherApp(lpparam);
-
+      hook(lpparam);
     }
 
-    private void hookOtherApp(final XC_LoadPackage.LoadPackageParam loadPackageParam) throws ClassNotFoundException {
+    private void hookOtherApp(final XC_LoadPackage.LoadPackageParam loadPackageParam, Context context,String timeStr) throws ClassNotFoundException {
         XposedBridge.log("lanc  " + loadPackageParam.packageName + "   " + (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0));
 
         if (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0) {
 
             if (!loadPackageParam.packageName.equals(Constants.SETTING_PACKAGE_NAME)) {
-                // 过滤 系统app
+                // 过滤 系统app、除了设置 app
                 return;
             }
         }
 
         // 忽略 支付宝
-        if (loadPackageParam.packageName.equals("com.eg.android.AlipayGphone")) {
+        if (loadPackageParam.packageName.startsWith("com.eg.android.AlipayGphone")) {
             return;
         }
 
-        final String timeStr = NetUtils.getNetTime();
+        if(!PerUtils.checkNetPer(context,loadPackageParam.packageName)){
+                // 判断是否有网络权限
+            // 没有网络权限
+            return;
+        }
+
+        Log.e("lanc","sleep: "+loadPackageParam.packageName);
+
+
+        if(timeStr==null){
+            Log.e("lanc","时间获取失败: "+loadPackageParam.packageName);
+            return;
+        }
 
         Set hookAllStartActivityMethods = XposedBridge.hookAllMethods(Class.forName("android.app.Activity"), "onStart", new Activity_XC_MethodHook(settingBean, loadPackageParam, timeStr));
 
@@ -88,4 +98,41 @@ public class Hook implements IXposedHookLoadPackage {
         }
     }
 
+
+    public void hook(final XC_LoadPackage.LoadPackageParam lpparam){
+
+        final String timeStr = NetUtils.getNetTime();
+        try {
+
+
+            findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    String versionName = null;
+                    final Class<?> activityThread = XposedHelpers.findClass("android.app.ActivityThread", lpparam.classLoader);
+                    if (activityThread != null) {
+                        Object currentActivityThread = XposedHelpers.callStaticMethod(activityThread, "currentActivityThread");
+                        if (currentActivityThread != null) {
+                            Context systemContext = (Context) XposedHelpers.callMethod(currentActivityThread, "getSystemContext");
+                            if (systemContext != null) {
+                                PackageManager packageManager = systemContext.getPackageManager();
+                                final PackageInfo packageInfo = packageManager.getPackageInfo(lpparam.packageName, 0);
+                                if (packageInfo != null) {
+                                    Context context = (Context) param.args[0];
+
+                                    hookOtherApp(lpparam,context,timeStr);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (XposedHelpers.ClassNotFoundError classNotFoundError) {
+            XposedBridge.log(classNotFoundError);
+            return;
+        }catch (Exception e){
+            e.printStackTrace();
+            return;
+        }
+    }
 }

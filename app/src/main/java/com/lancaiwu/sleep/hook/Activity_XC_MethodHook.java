@@ -3,6 +3,7 @@ package com.lancaiwu.sleep.hook;
 import android.os.Environment;
 
 import com.google.gson.Gson;
+import com.lancaiwu.sleep.bean.AppBean;
 import com.lancaiwu.sleep.bean.SettingBean;
 import com.lancaiwu.sleep.bean.TimeBean;
 import com.lancaiwu.sleep.utils.Constants;
@@ -56,6 +57,12 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
 
         if (settingBean != null && !settingBean.isEnable()) {
             // 没有开启
+            return;
+        }
+
+        if (settingBean != null &&settingBean.getAppBean() != null
+                && settingBean.getAppBean().getPackageName() != null && loadPackageParam.packageName.startsWith(settingBean.getAppBean().getPackageName())) {
+            // 白名单
             return;
         }
 
@@ -118,6 +125,10 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
         endTimeBean.setMinute(sharedPreferences.getInt("endTime_minute", 0));
         settingBean.setEndTime(endTimeBean);
 
+        String appBeanStr = sharedPreferences.getString("white_list_app", null);
+        if (appBeanStr != null) {
+            settingBean.setAppBean(new Gson().fromJson(appBeanStr, AppBean.class));
+        }
     }
 
     private SettingBean readFileConfig() {
