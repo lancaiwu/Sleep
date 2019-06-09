@@ -1,7 +1,5 @@
 package com.lancaiwu.sleep.utils;
 
-import android.os.Environment;
-
 /**
  * Created by lancaiwu on 2019/1/21.
  */
@@ -21,6 +19,12 @@ public class Constants {
     public static String FILE_NAME = "/setting.json";
 
     public static String SP_NAME = "SLEEP_DATA";
+    //
+    public static final int HOOK_TYPE_ACTIVITY_CREATE=1;
+    public static final int HOOK_TYPE_ACTIVITY_START=2;
+    public static final int HOOK_TYPE_APPLICATION_CREATE=3;
+    public static final int HOOK_TYPE_URL_CREATE=4;
+
 
 
 }

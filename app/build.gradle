@@ -7,8 +7,8 @@ android {
         applicationId "com.lancaiwu.sleep"
         minSdkVersion 14
         targetSdkVersion 21
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 4
+        versionName "1.1.3"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -43,5 +43,6 @@ dependencies {
     compile 'com.alibaba:fastjson:1.2.35'
     compile 'com.google.code.gson:gson:2.8.1'
     compile 'com.jakewharton:butterknife:8.7.0'
+
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.7.0'
 }

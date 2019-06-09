@@ -38,28 +38,20 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     private void hookOtherApp(final XC_LoadPackage.LoadPackageParam loadPackageParam, Context context,String timeStr) throws ClassNotFoundException {
-        XposedBridge.log("lanc  " + loadPackageParam.packageName + "   " + (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0));
 
-        if (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0) {
 
-            if (!loadPackageParam.packageName.equals(Constants.SETTING_PACKAGE_NAME)) {
-                // 过滤 系统app、除了设置 app
-                return;
-            }
-        }
-
-        // 忽略 支付宝
-        if (loadPackageParam.packageName.startsWith("com.eg.android.AlipayGphone")) {
-            return;
-        }
+     //   if (loadPackageParam.packageName.contains(":")) {
+       //     // 子进程 不 销毁，省的 一直重启子进程
+         //   return;
+       // }
 
         if(!PerUtils.checkNetPer(context,loadPackageParam.packageName)){
-                // 判断是否有网络权限
+            // 判断是否有网络权限
             // 没有网络权限
             return;
         }
 
-        Log.e("lanc","sleep: "+loadPackageParam.packageName);
+        Log.e("lanc","sleep: "+loadPackageParam.processName);
 
 
         if(timeStr==null){
@@ -67,15 +59,15 @@ public class Hook implements IXposedHookLoadPackage {
             return;
         }
 
-        Set hookAllStartActivityMethods = XposedBridge.hookAllMethods(Class.forName("android.app.Activity"), "onStart", new Activity_XC_MethodHook(settingBean, loadPackageParam, timeStr));
+        Set hookAllStartActivityMethods = XposedBridge.hookAllMethods(Class.forName("android.app.Activity"), "onStart", new Activity_XC_MethodHook(Constants.HOOK_TYPE_ACTIVITY_START,context,settingBean, loadPackageParam, timeStr));
 
-        XposedHelpers.findAndHookMethod(android.app.Activity.class, "onCreate", Bundle.class, new Activity_XC_MethodHook(settingBean, loadPackageParam, timeStr));
+        XposedHelpers.findAndHookMethod(android.app.Activity.class, "onCreate", Bundle.class, new Activity_XC_MethodHook(Constants.HOOK_TYPE_ACTIVITY_CREATE,context,settingBean, loadPackageParam, timeStr));
 
-        Set hookAllApplicationMethods = XposedBridge.hookAllMethods(Class.forName("android.app.Application"), "onCreate", new Activity_XC_MethodHook(settingBean, loadPackageParam, timeStr));
+        Set hookAllApplicationMethods = XposedBridge.hookAllMethods(Class.forName("android.app.Application"), "onCreate", new Activity_XC_MethodHook(Constants.HOOK_TYPE_APPLICATION_CREATE,context,settingBean, loadPackageParam, timeStr));
 
         if (loadPackageParam.packageName.equals(Constants.ZHIHU_PACKAGE_NAME)) {
             try {
-                Set hookZhiHuApplicationMethods = XposedBridge.hookAllConstructors(Class.forName("java.net.URL"), new Activity_XC_MethodHook(settingBean, loadPackageParam, timeStr));
+                Set hookZhiHuApplicationMethods = XposedBridge.hookAllConstructors(Class.forName("java.net.URL"), new Activity_XC_MethodHook(Constants.HOOK_TYPE_URL_CREATE,context,settingBean, loadPackageParam, timeStr));
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -99,9 +91,25 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
 
-    public void hook(final XC_LoadPackage.LoadPackageParam lpparam){
+    public void hook(final XC_LoadPackage.LoadPackageParam loadPackageParam){
+        XposedBridge.log("lanc  " + loadPackageParam.packageName + "   " + (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0));
+
+        if (loadPackageParam.appInfo == null || (loadPackageParam.appInfo.flags & 1) > 0 || (loadPackageParam.appInfo.flags & 129) != 0) {
+
+            if (!loadPackageParam.packageName.equals(Constants.SETTING_PACKAGE_NAME)) {
+                // 过滤 系统app、除了设置 app
+                return;
+            }
+        }
+
+        // 忽略 支付宝
+        if (loadPackageParam.packageName.startsWith("com.eg.android.AlipayGphone")) {
+            return;
+        }
 
         final String timeStr = NetUtils.getNetTime();
+
+
         try {
 
 
@@ -109,18 +117,18 @@ public class Hook implements IXposedHookLoadPackage {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     String versionName = null;
-                    final Class<?> activityThread = XposedHelpers.findClass("android.app.ActivityThread", lpparam.classLoader);
+                    final Class<?> activityThread = XposedHelpers.findClass("android.app.ActivityThread", loadPackageParam.classLoader);
                     if (activityThread != null) {
                         Object currentActivityThread = XposedHelpers.callStaticMethod(activityThread, "currentActivityThread");
                         if (currentActivityThread != null) {
                             Context systemContext = (Context) XposedHelpers.callMethod(currentActivityThread, "getSystemContext");
                             if (systemContext != null) {
                                 PackageManager packageManager = systemContext.getPackageManager();
-                                final PackageInfo packageInfo = packageManager.getPackageInfo(lpparam.packageName, 0);
+                                final PackageInfo packageInfo = packageManager.getPackageInfo(loadPackageParam.packageName, 0);
                                 if (packageInfo != null) {
                                     Context context = (Context) param.args[0];
 
-                                    hookOtherApp(lpparam,context,timeStr);
+                                    hookOtherApp(loadPackageParam,context,timeStr);
                                 }
                             }
                         }

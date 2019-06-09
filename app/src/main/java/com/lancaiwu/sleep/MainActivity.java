@@ -6,7 +6,6 @@ import android.app.TimePickerDialog;
 import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,7 +20,6 @@ import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.TimePicker;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.lancaiwu.sleep.bean.AppBean;
@@ -33,6 +31,9 @@ import com.lancaiwu.sleep.utils.IOUtils;
 import com.lancaiwu.sleep.utils.SpUtils;
 
 import java.io.File;
+import java.text.Collator;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static com.lancaiwu.sleep.utils.Constants.SP_NAME;
@@ -241,10 +242,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showSetWhiteList() {
+
+        Comparator<AppBean> comparator = new Comparator<AppBean>() {
+            public int compare(AppBean s1, AppBean s2) {
+                Comparator<Object> com = Collator.getInstance(java.util.Locale.CHINA);
+                return com.compare(s1.getAppName(), s2.getAppName());
+            }
+        };
+        Collections.sort(appList, comparator);
+
         String[] appNames = new String[appList.size()];
         for (int i = 0; i < appList.size(); i++) {
             appNames[i] = appList.get(i).getAppName();
         }
+
+
+        //   Comparator<Object> comparator = Collator.getInstance(java.util.Locale.CHINA);
+
+
+        //   Arrays.sort(appNames, comparator);
+
         AlertDialog.Builder singleChoiceDialog =
                 new AlertDialog.Builder(MainActivity.this);
         singleChoiceDialog.setTitle("请选择一个忽略的app");
@@ -254,16 +271,16 @@ public class MainActivity extends AppCompatActivity {
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        myWhich[0] =which;
+                        myWhich[0] = which;
                     }
                 });
         singleChoiceDialog.setPositiveButton("确定",
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Log.e("lanc", "which: " +  myWhich[0] );
-                        if ( myWhich[0]  >= 0) {
-                            AppBean appBean = appList.get( myWhich[0] );
+                        Log.e("lanc", "which: " + myWhich[0]);
+                        if (myWhich[0] >= 0) {
+                            AppBean appBean = appList.get(myWhich[0]);
                             settingBean.setAppBean(appBean);
                             tv_app_name.setText(settingBean.getAppBean().getAppName());
                             saveSetting();

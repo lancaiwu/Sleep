@@ -1,6 +1,12 @@
 package com.lancaiwu.sleep.hook;
 
+import android.app.Activity;
+import android.app.Application;
+import android.content.Context;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.lancaiwu.sleep.bean.AppBean;
@@ -28,16 +34,22 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
     private SettingBean settingBean;
     private XC_LoadPackage.LoadPackageParam loadPackageParam;
     private String timeStr;
+    private Context context;
+    private int type;
 
-    public Activity_XC_MethodHook(SettingBean settingBean, XC_LoadPackage.LoadPackageParam loadPackageParam, String timeStr) {
+    public Activity_XC_MethodHook(int type, Context context, SettingBean settingBean, XC_LoadPackage.LoadPackageParam loadPackageParam, String timeStr) {
+        this.type = type;
         this.settingBean = settingBean;
         this.timeStr = timeStr;
         this.loadPackageParam = loadPackageParam;
+        this.context = context;
     }
 
-    public Activity_XC_MethodHook(SettingBean settingBean, XC_LoadPackage.LoadPackageParam loadPackageParam) {
+    public Activity_XC_MethodHook(int type, Context context, SettingBean settingBean, XC_LoadPackage.LoadPackageParam loadPackageParam) {
+        this.type = type;
         this.settingBean = settingBean;
         this.loadPackageParam = loadPackageParam;
+        this.context = context;
     }
 
     @Override
@@ -60,15 +72,40 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
             return;
         }
 
-        if (settingBean != null &&settingBean.getAppBean() != null
+        if (settingBean != null && settingBean.getAppBean() != null
                 && settingBean.getAppBean().getPackageName() != null && loadPackageParam.packageName.startsWith(settingBean.getAppBean().getPackageName())) {
             // 白名单
             return;
         }
 
-        TimerTask timerTask = new MyTimer(param.thisObject, loadPackageParam.packageName, getWaitTime());
-        Timer timer = new Timer();
-        timer.schedule(timerTask, 0, 100);
+        final long waitTime = getWaitTime();
+        Handler handler = new Handler(Looper.getMainLooper());
+        if (10000 <waitTime && waitTime <= 300000 ) {
+            Toast.makeText(((Context) param.thisObject), "五分钟内即将杜绝手机!!!" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+        }
+        if (waitTime <= 10000 ) {
+
+            if (param.thisObject instanceof Application) {
+                Toast.makeText(((Application) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+            }
+
+            if (param.thisObject instanceof Activity) {
+                Toast.makeText(((Activity) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+            }
+
+            if (param.thisObject instanceof Context ) {
+                Toast.makeText(((Context) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+            }
+
+            TimerTask timerTask = new MyTimer(type, param.thisObject, context, handler, loadPackageParam.packageName, waitTime);
+            Thread thread = new Thread(timerTask);
+            thread.start();
+        } else {
+            TimerTask timerTask = new MyTimer(type, param.thisObject, context, handler, loadPackageParam.packageName, waitTime);
+            Timer timer = new Timer();
+            timer.schedule(timerTask, 0, 20000);
+        }
+
     }
 
     private long getWaitTime() {
@@ -92,7 +129,32 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
 
             long endTime = calendar.getTimeInMillis();
 
+            XposedBridge.log("lanc  " + "c:" + currentTime + " s:" + startTime + " e:" + endTime);
+
             if (startTime > endTime) {
+                // 表示不是同一天，要跨天
+                if (endTime > currentTime) {
+                    // 表示处于 禁用期 第二天
+                } else if (currentTime > startTime) {
+                    // 表示处于 禁用期 第一天
+                } else if (endTime < currentTime && currentTime < startTime) {
+                    // 处于等待时间
+                    waitTime = startTime - currentTime;
+                }
+            } else {
+                // 同一天
+                if (startTime > currentTime) {
+                    waitTime = startTime - currentTime;
+                } else if (endTime < currentTime) {
+                    // 等待期 -- 等下一天
+                    waitTime = startTime + 86400000L - currentTime;
+                } else if (currentTime > startTime && currentTime < endTime) {
+                    // 处于 禁用期
+                }
+            }
+
+
+           /* if (startTime > endTime) {
                 // 跨天了
                 endTime = endTime + 86400000L;
             }
@@ -105,7 +167,7 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
                 // 跨天了
                 startTime = startTime + 86400000L;
                 waitTime = startTime - currentTime;
-            }
+            }*/
         }
         return waitTime;
     }
