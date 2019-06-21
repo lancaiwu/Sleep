@@ -3,9 +3,12 @@ package com.lancaiwu.sleep.utils;
 import android.content.SharedPreferences;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.lancaiwu.sleep.bean.AppBean;
 import com.lancaiwu.sleep.bean.SettingBean;
 import com.lancaiwu.sleep.bean.TimeBean;
+
+import java.util.List;
 
 public class SpUtils {
     public static SettingBean getSetting(SharedPreferences sharedPreferences) {
@@ -27,6 +30,12 @@ public class SpUtils {
         String appBeanStr = sharedPreferences.getString("white_list_app", null);
         if (appBeanStr != null) {
             settingBean.setAppBean(new Gson().fromJson(appBeanStr, AppBean.class));
+        }
+
+        String appBeansStr = sharedPreferences.getString("white_list_apps", null);
+        if (appBeansStr != null) {
+            settingBean.setAppBeans((List<AppBean>) new Gson().fromJson(appBeansStr, new TypeToken<List<AppBean>>() {
+            }.getType()));
         }
         return settingBean;
     }

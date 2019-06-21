@@ -9,6 +9,7 @@ import android.os.Looper;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.lancaiwu.sleep.bean.AppBean;
 import com.lancaiwu.sleep.bean.SettingBean;
 import com.lancaiwu.sleep.bean.TimeBean;
@@ -18,6 +19,7 @@ import com.lancaiwu.sleep.utils.MyTimer;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -61,6 +63,7 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
         if (settingBean != null) {
             XposedBridge.log("lanc  " + new Gson().toJson(settingBean));
         }
+
         if (loadPackageParam.packageName.equals(Constants.SETTING_PACKAGE_NAME)) {
             if (settingBean != null && !settingBean.isEnable()) {
                 settingBean = readFileConfig();
@@ -78,23 +81,35 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
             return;
         }
 
+        if (settingBean != null && settingBean.getAppBeans() != null && !settingBean.getAppBeans().isEmpty()) {
+
+            for (AppBean appBean : settingBean.getAppBeans()) {
+                if(appBean.getPackageName()!=null && loadPackageParam.packageName.startsWith(appBean.getPackageName())){
+                    // 白名单
+                    return;
+                }
+            }
+
+        }
+
         final long waitTime = getWaitTime();
         Handler handler = new Handler(Looper.getMainLooper());
-        if (10000 <waitTime && waitTime <= 300000 ) {
-            Toast.makeText(((Context) param.thisObject), "五分钟内即将杜绝手机!!!" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+        if (10000 < waitTime && waitTime <= 300000) {
+            Toast.makeText(((Context) param.thisObject), "五分钟内即将杜绝手机!!!" + loadPackageParam.processName, Toast.LENGTH_LONG).show();
         }
-        if (waitTime <= 10000 ) {
+
+        if (waitTime <= 10000) {
 
             if (param.thisObject instanceof Application) {
-                Toast.makeText(((Application) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+                Toast.makeText(((Application) param.thisObject), "时间已到,杜绝手机" + loadPackageParam.processName, Toast.LENGTH_LONG).show();
             }
 
             if (param.thisObject instanceof Activity) {
-                Toast.makeText(((Activity) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+                Toast.makeText(((Activity) param.thisObject), "时间已到,杜绝手机" + loadPackageParam.processName, Toast.LENGTH_LONG).show();
             }
 
-            if (param.thisObject instanceof Context ) {
-                Toast.makeText(((Context) param.thisObject), "时间已到,杜绝手机" +loadPackageParam.processName, Toast.LENGTH_LONG).show();
+            if (param.thisObject instanceof Context) {
+                Toast.makeText(((Context) param.thisObject), "时间已到,杜绝手机" + loadPackageParam.processName, Toast.LENGTH_LONG).show();
             }
 
             TimerTask timerTask = new MyTimer(type, param.thisObject, context, handler, loadPackageParam.packageName, waitTime);
@@ -190,6 +205,12 @@ public class Activity_XC_MethodHook extends XC_MethodHook {
         String appBeanStr = sharedPreferences.getString("white_list_app", null);
         if (appBeanStr != null) {
             settingBean.setAppBean(new Gson().fromJson(appBeanStr, AppBean.class));
+        }
+
+        String appBeansStr = sharedPreferences.getString("white_list_apps", null);
+        if (appBeansStr != null) {
+            settingBean.setAppBeans((List<AppBean>) new Gson().fromJson(appBeansStr, new TypeToken<List<AppBean>>() {
+            }.getType()));
         }
     }
 

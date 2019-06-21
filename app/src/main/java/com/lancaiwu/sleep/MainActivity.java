@@ -20,6 +20,7 @@ import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.TimePicker;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.lancaiwu.sleep.bean.AppBean;
@@ -32,6 +33,7 @@ import com.lancaiwu.sleep.utils.SpUtils;
 
 import java.io.File;
 import java.text.Collator;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -233,8 +235,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        if (settingBean.getAppBean() != null) {
-            tv_app_name.setText(settingBean.getAppBean().getAppName());
+        if (settingBean.getAppBeans() != null) {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (AppBean appBean : settingBean.getAppBeans()) {
+                stringBuilder.append(appBean.getAppName()).append(" ");
+            }
+            tv_app_name.setText(stringBuilder.toString());
         } else {
             tv_app_name.setText("暂未设置");
         }
@@ -251,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
         };
         Collections.sort(appList, comparator);
 
-        String[] appNames = new String[appList.size()];
+        final String[] appNames = new String[appList.size()];
         for (int i = 0; i < appList.size(); i++) {
             appNames[i] = appList.get(i).getAppName();
         }
@@ -262,32 +268,79 @@ public class MainActivity extends AppCompatActivity {
 
         //   Arrays.sort(appNames, comparator);
 
-        AlertDialog.Builder singleChoiceDialog =
-                new AlertDialog.Builder(MainActivity.this);
-        singleChoiceDialog.setTitle("请选择一个忽略的app");
-        // 第二个参数是默认选项，此处设置为0
-        final int[] myWhich = {-1};
-        singleChoiceDialog.setSingleChoiceItems(appNames, 0,
-                new DialogInterface.OnClickListener() {
+//        AlertDialog.Builder singleChoiceDialog =
+//                new AlertDialog.Builder(MainActivity.this);
+//        singleChoiceDialog.setTitle("请选择一个忽略的app");
+//        // 第二个参数是默认选项，此处设置为0
+//        final int[] myWhich = {-1};
+//        singleChoiceDialog.setSingleChoiceItems(appNames, 0,
+//                new DialogInterface.OnClickListener() {
+//                    @Override
+//                    public void onClick(DialogInterface dialog, int which) {
+//                        myWhich[0] = which;
+//                    }
+//                });
+//        singleChoiceDialog.setPositiveButton("确定",
+//                new DialogInterface.OnClickListener() {
+//                    @Override
+//                    public void onClick(DialogInterface dialog, int which) {
+//                        Log.e("lanc", "which: " + myWhich[0]);
+//                        if (myWhich[0] >= 0) {
+//                            AppBean appBean = appList.get(myWhich[0]);
+//                            settingBean.setAppBean(appBean);
+//                            tv_app_name.setText(settingBean.getAppBean().getAppName());
+//                            saveSetting();
+//                        }
+//                    }
+//                });
+//        singleChoiceDialog.show();
+
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final boolean[] checkedItems = new boolean[appList.size()];
+        for (int i = 0; i < appList.size(); i++) {
+            checkedItems[i] = false;
+        }
+
+        builder.setMultiChoiceItems(appNames, checkedItems,
+                new DialogInterface.OnMultiChoiceClickListener() {
+
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        myWhich[0] = which;
+                    public void onClick(DialogInterface dialog, int which,
+                                        boolean isChecked) {
+
                     }
                 });
-        singleChoiceDialog.setPositiveButton("确定",
-                new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Log.e("lanc", "which: " + myWhich[0]);
-                        if (myWhich[0] >= 0) {
-                            AppBean appBean = appList.get(myWhich[0]);
-                            settingBean.setAppBean(appBean);
-                            tv_app_name.setText(settingBean.getAppBean().getAppName());
-                            saveSetting();
-                        }
+
+
+        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+                // 把选中的 条目的数据给我取出来
+                List<AppBean> appBeanList = new ArrayList<>();
+
+                StringBuilder stringBuffer = new StringBuilder();
+
+                for (int i = 0; i < checkedItems.length; i++) {
+                    // 判断一下 选中的
+                    if (checkedItems[i]) {
+                        appBeanList.add(appList.get(i));
+                        stringBuffer.append(appList.get(i).getAppName()).append(" ");
                     }
-                });
-        singleChoiceDialog.show();
+                }
+
+                settingBean.setAppBeans(appBeanList);
+                tv_app_name.setText(stringBuffer.toString());
+                saveSetting();
+                // 关闭对话框
+                dialog.dismiss();
+
+            }
+        });
+        // 最后一步 一定要记得 和Toast 一样 show出来
+        builder.show();
     }
 
     private String getTimeFormat(TimeBean timeBean) {
@@ -318,6 +371,9 @@ public class MainActivity extends AppCompatActivity {
 
             if (settingBean.getAppBean() != null) {
                 editor.putString("white_list_app", gson.toJson(settingBean.getAppBean()));
+            }
+            if (settingBean.getAppBeans() != null) {
+                editor.putString("white_list_apps", gson.toJson(settingBean.getAppBeans()));
             }
             editor.apply();
         } catch (Exception e) {

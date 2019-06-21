@@ -1,5 +1,7 @@
 package com.lancaiwu.sleep.bean;
 
+import java.util.List;
+
 /**
  * Created by lancaiwu on 2019/1/21.
  */
@@ -37,6 +39,8 @@ public class SettingBean {
         isEnable = enable;
     }
 
+    private List<AppBean> appBeans;
+
     private AppBean appBean;
 
     public AppBean getAppBean() {
@@ -45,5 +49,13 @@ public class SettingBean {
 
     public void setAppBean(AppBean appBean) {
         this.appBean = appBean;
+    }
+
+    public List<AppBean> getAppBeans() {
+        return appBeans;
+    }
+
+    public void setAppBeans(List<AppBean> appBeans) {
+        this.appBeans = appBeans;
     }
 }
